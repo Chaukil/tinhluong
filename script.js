@@ -143,6 +143,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+        // Toggle bonus fields based on employee type
+    document.getElementById('employeeType').addEventListener('change', function() {
+        const bonusTypeDiv = document.getElementById('bonusType').closest('.col-md-6');
+        const productivityDiv = document.getElementById('productivityBonusDiv');
+        
+        if (this.value === 'office') {
+            bonusTypeDiv.style.display = 'none';
+            productivityDiv.style.display = 'none';
+        } else {
+            bonusTypeDiv.style.display = 'block';
+            // Restore visibility based on current bonus type
+            if (document.getElementById('bonusType').value === 'productivity') {
+                productivityDiv.style.display = 'block';
+            }
+        }
+        
+        // Tính toán lại nếu đã có dữ liệu cơ bản
+        if (autoCalculationEnabled) {
+            const basicSalary = document.getElementById('basicSalary').value;
+            const workingDays = document.getElementById('workingDays').value;
+            if (basicSalary && workingDays) {
+                calculateSalaryQuiet();
+            }
+        }
+    });
+
 });
 
 function calculateSalary() {
@@ -171,6 +198,7 @@ function performCalculation() {
     const nightShift = parseNumber(document.getElementById('nightShift').value);
     const bonusType = document.getElementById('bonusType').value;
     const productivityBonus = parseNumber(document.getElementById('productivityBonus').value);
+    const employeeType = document.getElementById('employeeType').value;
 
     // Kiểm tra dữ liệu đầu vào
     if (!basicSalary || !workingDays) {
@@ -190,23 +218,30 @@ function performCalculation() {
     const sundayOvertimePay = hourlyRate * sundayOvertime * 2;
     const nightShiftPay = (hourlyRate * 0.3 * nightShift) + (nightShift / 8 * 10000);
     
-    // Thưởng chuyên cần: 700k/26*số ngày làm việc
-    const attendanceBonus = (700000 / 26) * workingDays;
-    
-    // Trợ cấp nhà trọ: 200k/26*số ngày làm việc
-    const housingAllowance = (200000 / 26) * workingDays;
-    
-    // Trợ cấp đi lại: 200k/26*số ngày làm việc
-    const transportAllowance = (200000 / 26) * workingDays;
-    
-    // Thưởng hiệu suất/năng suất
+    // Các khoản phụ cấp và thưởng (chỉ cho công nhân sản xuất)
+    let attendanceBonus = 0;
+    let housingAllowance = 0;
+    let transportAllowance = 0;
     let performanceBonus = 0;
-    if (bonusType === 'efficiency') {
-        // Thưởng hiệu suất: 900k/26*số ngày làm việc
-        performanceBonus = (900000 / 26) * workingDays;
-    } else {
-        // Thưởng năng suất: số tiền nhập vào
-        performanceBonus = productivityBonus;
+    
+    if (employeeType === 'factory') {
+        // Thưởng chuyên cần: 700k/26*số ngày làm việc
+        attendanceBonus = (700000 / 26) * workingDays;
+        
+        // Trợ cấp nhà trọ: 200k/26*số ngày làm việc
+        housingAllowance = (200000 / 26) * workingDays;
+        
+        // Trợ cấp đi lại: 200k/26*số ngày làm việc
+        transportAllowance = (200000 / 26) * workingDays;
+        
+        // Thưởng hiệu suất/năng suất
+        if (bonusType === 'efficiency') {
+            // Thưởng hiệu suất: 900k/26*số ngày làm việc
+            performanceBonus = (900000 / 26) * workingDays;
+        } else {
+            // Thưởng năng suất: số tiền nhập vào
+            performanceBonus = productivityBonus;
+        }
     }
 
     // Tổng thu nhập
@@ -240,13 +275,15 @@ function performCalculation() {
         unionFee,
         totalDeductions,
         netSalary,
-        bonusType
+        bonusType,
+        employeeType
     });
 }
 
+
 function displayResults(calc) {
-    // Thu nhập
-    const incomeHTML = `
+    // Thu nhập - các khoản cơ bản (luôn hiển thị)
+    let incomeHTML = `
         <div class="calculation-row">
             <div class="d-flex justify-content-between">
                 <span class="small"><i class="fas fa-calendar-day me-1"></i>Ngày làm việc:</span>
@@ -289,6 +326,11 @@ function displayResults(calc) {
                 <span class="amount total-income small">${formatCurrency(calc.nightShiftPay)}</span>
             </div>
         </div>
+    `;
+    
+    // Thêm các khoản phụ cấp và thưởng (chỉ cho công nhân sản xuất)
+    if (calc.employeeType === 'factory') {
+        incomeHTML += `
         <div class="calculation-row">
             <div class="d-flex justify-content-between">
                 <span class="small"><i class="fas fa-medal me-1"></i>Thưởng chuyên cần:</span>
@@ -313,6 +355,10 @@ function displayResults(calc) {
                 <span class="amount total-income small">${formatCurrency(calc.performanceBonus)}</span>
             </div>
         </div>
+        `;
+    }
+    
+    incomeHTML += `
         <hr class="my-2">
         <div class="calculation-row">
             <div class="d-flex justify-content-between">
@@ -354,3 +400,4 @@ function displayResults(calc) {
     resultsDiv.style.display = 'block';
     resultsDiv.classList.add('fade-in');
 }
+
